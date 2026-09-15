@@ -380,9 +380,53 @@ describe('greenfield editor', () => {
     },
   )
 
+  it.each(['png', 'psd'] as const)(
+    'shows %s page export activity and prevents duplicate page exports',
+    async (format) => {
+      const user = userEvent.setup()
+      installProject()
+      let finishExport: (() => void) | undefined
+      const exportPages = vi.spyOn(commands, 'exportPages').mockImplementation(
+        () =>
+          new Promise<null>((resolve) => {
+            finishExport = () => resolve(null)
+          }),
+      )
+      render(
+        <>
+          <TitleBar />
+          <ActivityCenter />
+        </>,
+      )
+
+      expect(screen.queryByRole('complementary', { name: 'Activity' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('menuitem', { name: 'File' }))
+      await user.hover(await screen.findByRole('menuitem', { name: 'Export Pages' }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: `${format.toUpperCase()}…` }))
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Export Pages')
+      expect(exportPages).toHaveBeenCalledExactlyOnceWith(['page'], format)
+      await user.click(screen.getByRole('menuitem', { name: 'File' }))
+      expect(await screen.findByRole('menuitem', { name: 'Export Pages' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+
+      await act(async () => finishExport?.())
+      await waitFor(() =>
+        expect(screen.queryByRole('complementary', { name: 'Activity' })).not.toBeInTheDocument(),
+      )
+      expect(await screen.findByRole('menuitem', { name: 'Export Pages' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    },
+  )
+
   it.each([
     { command: 'import', menu: 'Import Pages', choice: 'Files…', pending: 'Importing pages…' },
     { command: 'export', menu: 'Export Project', choice: 'CBZ…', pending: 'Export Project' },
+    { command: 'exportPages', menu: 'Export Pages', choice: 'PSD…', pending: 'Export Pages' },
   ] as const)(
     'clears $command activity after failure',
     async ({ command, menu, choice, pending }) => {

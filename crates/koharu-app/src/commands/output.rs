@@ -1,5 +1,5 @@
 use anyhow::{Context as _, Result};
-use futures::future::try_join_all;
+use futures::{StreamExt as _, TryStreamExt as _, future::try_join_all, stream};
 use image::{
     ExtendedColorType, ImageEncoder as _,
     codecs::png::{CompressionType, FilterType, PngEncoder},
@@ -36,6 +36,141 @@ pub enum ExportFormat {
     Png,
     Psd,
     Cbz,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum PageExportFormat {
+    Png,
+    Psd,
+}
+
+#[tracing::instrument(
+    target = "koharu_metrics",
+    name = "export",
+    skip_all,
+    fields(origin = "user", format = ?format),
+)]
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn export_pages(
+    window: WebviewWindow<CefRuntime>,
+    pages: Vec<EntityId>,
+    format: PageExportFormat,
+    project: State<'_, CurrentProject>,
+    desktop: State<'_, Desktop>,
+) -> std::result::Result<(), Error> {
+    let snapshot = {
+        let project = project.project.lock().await;
+        let project = project.as_ref().context("no project is open")?;
+        project.snapshot()
+    };
+    let Some(directory) = rfd::AsyncFileDialog::new()
+        .set_parent(&window)
+        .pick_folder()
+        .await
+        .map(|directory| directory.path().to_owned())
+    else {
+        return Ok(());
+    };
+    let pages = if pages.is_empty() {
+        snapshot.pages().map(|page| page.id()).collect()
+    } else {
+        pages
+    };
+    if pages.is_empty() {
+        return Err(anyhow::anyhow!("there are no pages to export").into());
+    }
+    let renderer = desktop.renderer();
+    let rasterizer = desktop.rasterizer().await?;
+    let jobs = pages
+        .into_iter()
+        .enumerate()
+        .map(|(index, page_id)| {
+            let page = snapshot.page(page_id)?.page()?;
+            let name = page
+                .label
+                .trim()
+                .trim_end_matches(|character: char| character == '.' || character.is_whitespace());
+            let name = name.rsplit_once('.').map_or(name, |(stem, _)| stem);
+            let name = name
+                .chars()
+                .map(|character| {
+                    if matches!(
+                        character,
+                        '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+                    ) {
+                        '_'
+                    } else {
+                        character
+                    }
+                })
+                .collect::<String>();
+            let stem = format!(
+                "{:04}_{}",
+                index + 1,
+                if name.is_empty() { "page" } else { &name }
+            );
+            Ok::<_, anyhow::Error>((page_id, stem))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    stream::iter(jobs)
+        .map(|(page_id, stem)| {
+            let renderer = renderer.clone();
+            let rasterizer = Arc::clone(&rasterizer);
+            let snapshot = snapshot.clone();
+            let directory = directory.clone();
+            async move {
+                let frame = renderer.render(&snapshot, page_id).await?;
+                match format {
+                    PageExportFormat::Png => {
+                        let image =
+                            rasterize(Arc::clone(&rasterizer), &frame, RasterOptions::default())
+                                .await?
+                                .image;
+                        tokio::task::spawn_blocking(move || -> Result<()> {
+                            let file =
+                                std::fs::File::create(directory.join(format!("{stem}.png")))?;
+                            PngEncoder::new_with_quality(
+                                file,
+                                CompressionType::Best,
+                                FilterType::Adaptive,
+                            )
+                            .write_image(
+                                image.as_raw(),
+                                image.width(),
+                                image.height(),
+                                ExtendedColorType::Rgba8,
+                            )?;
+                            Ok(())
+                        })
+                        .await
+                        .context("PNG export worker stopped unexpectedly")??;
+                    }
+                    PageExportFormat::Psd => {
+                        let bytes = export_page(
+                            Arc::clone(&rasterizer),
+                            &snapshot,
+                            &frame,
+                            &PsdExportOptions::default(),
+                        )
+                        .await?
+                        ;
+                        tokio::fs::write(directory.join(format!("{stem}.psd")), bytes).await?;
+                    }
+                }
+                tracing::info!(
+                    target: "koharu_metrics",
+                    metric = "page_exported",
+                    format = ?format,
+                );
+                Ok::<_, anyhow::Error>(())
+            }
+        })
+        .buffer_unordered(4)
+        .try_collect::<Vec<_>>()
+        .await?;
+    Ok(())
 }
 
 #[tracing::instrument(

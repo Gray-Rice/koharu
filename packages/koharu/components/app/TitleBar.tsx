@@ -57,6 +57,11 @@ export function TitleBar() {
     commands.export,
     'menu.export',
   )
+  const { run: exportPages, busy: exportingPages } = useCommand(
+    ['export-pages'],
+    commands.exportPages,
+    'menu.exportPages',
+  )
 
   const run = (scope: Scope, operation: Operation = { operation: 'full' }) =>
     void call(commands.process, scope, operation).catch(() => undefined)
@@ -106,6 +111,27 @@ export function TitleBar() {
                     <FolderOpen />
                     {t('navigator.importFolder')}
                   </MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
+              <MenubarSub>
+                <MenubarSubTrigger
+                  disabled={!project || pages.length === 0 || exportingPages}
+                  aria-busy={exportingPages}
+                  className='min-h-8 gap-1.5 px-2 py-1 text-xs'
+                >
+                  {exportingPages && <LoaderCircle className='animate-spin' aria-hidden='true' />}
+                  {t('menu.exportPages')}
+                </MenubarSubTrigger>
+                <MenubarSubContent className='min-w-40 p-1'>
+                  {(['png', 'psd'] as const).map((format) => (
+                    <MenubarItem
+                      key={format}
+                      disabled={exportingPages}
+                      onClick={() => exportPages(exportSelection(selectedPages, page?.id), format)}
+                    >
+                      {format.toUpperCase()}…
+                    </MenubarItem>
+                  ))}
                 </MenubarSubContent>
               </MenubarSub>
               <MenubarSub>
@@ -284,6 +310,11 @@ export function TitleBar() {
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
     </>
   )
+}
+
+function exportSelection(selected: string[], active?: string): string[] {
+  if (selected.length) return selected
+  return active ? [active] : []
 }
 
 function MenubarTrigger({ className, ...props }: ComponentProps<typeof UiMenubarTrigger>) {
