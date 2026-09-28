@@ -2,6 +2,7 @@
 
 import {
   Brush,
+  Check,
   Eraser,
   Hand,
   Minus,
@@ -10,6 +11,7 @@ import {
   Plus,
   Sparkles,
   Type,
+  Square,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,6 +23,8 @@ import {
   MIN_BRUSH_DIAMETER,
   useKoharuStore,
   type CanvasTool,
+  type EraserMode,
+  type RemoveMode,
 } from '@/lib/store'
 import { Button } from '@koharu/ui/components/button'
 import {
@@ -49,7 +53,29 @@ const tools = [
   ['pan', Hand],
 ] as const satisfies ReadonlyArray<readonly [CanvasTool, typeof MousePointer2]>
 
-export function ToolBar() {
+const eraserModes: ReadonlyArray<readonly [EraserMode, typeof Square]> = [
+  ['brush', Brush],
+  ['rectangle', Square],
+] as const
+
+const removeModes: ReadonlyArray<readonly [RemoveMode, typeof Square]> = [
+  ['brush', Sparkles],
+  ['rectangle', Square],
+] as const
+
+interface ToolBarProps {
+  pendingEraseRect?: { x: number; y: number; width: number; height: number; angle_degrees: number; layer: string } | null
+  pendingRemoveRect?: { x: number; y: number; width: number; height: number; angle_degrees: number } | null
+  onExecuteEraseRect?: () => void
+  onExecuteRemoveRect?: () => void
+}
+
+export function ToolBar({
+  pendingEraseRect,
+  pendingRemoveRect,
+  onExecuteEraseRect,
+  onExecuteRemoveRect,
+}: ToolBarProps) {
   const { t } = useTranslation()
   const page = usePage().data
   const active = useKoharuStore((state) => state.tool)
@@ -59,34 +85,64 @@ export function ToolBar() {
   const shortcuts = useKoharuStore((state) => state.shortcuts)
   const hasBrush = isBrushTool(active)
 
+  // Check if rectangle mode is active for eraser or remove
+  const isEraserRectangle = active === 'eraser' && brush.eraserMode === 'rectangle'
+  const isRemoveRectangle = active === 'remove' && brush.removeMode === 'rectangle'
+  const isRectangleMode = isEraserRectangle || isRemoveRectangle
+
+  // Check if there's a pending rectangle to execute
+  const hasPendingExecute = (pendingEraseRect && onExecuteEraseRect) || (pendingRemoveRect && onExecuteRemoveRect)
+
   return (
     <aside className='absolute top-3 left-3 z-20 flex w-11 flex-col rounded-2xl border border-border bg-[var(--surface-floating)] p-1 shadow-[var(--shadow-toolrail)]'>
       <div className='flex flex-col items-center py-0.5'>
         {tools.map(([tool, Icon], index) => (
           <div key={tool} className='contents'>
             {index === tools.length - 1 && <span className='my-1 h-px w-5 bg-border' />}
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='icon'
-                    disabled={!page}
-                    aria-label={t(`tools.${tool}`)}
-                    data-active={active === tool}
-                    className='relative text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground'
-                    onClick={() => setTool(tool)}
-                  />
-                }
-              >
-                <Icon className='size-4' />
-              </TooltipTrigger>
-              <TooltipContent side='right'>
-                {t(`tools.${tool}`)}
-                <span className='ml-2 opacity-60'>{shortcuts[tool].toUpperCase()}</span>
-              </TooltipContent>
-            </Tooltip>
+            {tool === 'eraser' ? (
+              <EraserModePopover
+                active={active}
+                brush={brush}
+                setTool={setTool}
+                setBrush={setBrush}
+                shortcuts={shortcuts}
+                t={t}
+                page={page}
+              />
+            ) : tool === 'remove' ? (
+              <RemoveModePopover
+                active={active}
+                brush={brush}
+                setTool={setTool}
+                setBrush={setBrush}
+                shortcuts={shortcuts}
+                t={t}
+                page={page}
+              />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon'
+                      disabled={!page}
+                      aria-label={t(`tools.${tool}`)}
+                      data-active={active === tool}
+                      className='relative text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground'
+                      onClick={() => setTool(tool)}
+                    />
+                  }
+                >
+                  <Icon className='size-4' />
+                </TooltipTrigger>
+                <TooltipContent side='right'>
+                  {t(`tools.${tool}`)}
+                  <span className='ml-2 opacity-60'>{shortcuts[tool].toUpperCase()}</span>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         ))}
       </div>
@@ -96,13 +152,178 @@ export function ToolBar() {
           {active === 'draw' && (
             <ColorWell value={brush.color} onChange={(color) => setBrush({ ...brush, color })} />
           )}
-          <BrushSize
-            value={brush.diameter}
-            onChange={(diameter) => setBrush({ ...brush, diameter })}
-          />
+          {!isRectangleMode && (
+            <BrushSize
+              value={brush.diameter}
+              onChange={(diameter) => setBrush({ ...brush, diameter })}
+            />
+          )}
+          {hasPendingExecute && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type='button'
+                    variant='destructive'
+                    size='icon'
+                    className='rounded-lg shadow-lg'
+                    onClick={() => {
+                      if (pendingEraseRect && onExecuteEraseRect) onExecuteEraseRect()
+                      else if (pendingRemoveRect && onExecuteRemoveRect) onExecuteRemoveRect()
+                    }}
+                  >
+                    <Check className='size-4' />
+                  </Button>
+                }
+              />
+              <TooltipContent side='right'>
+                {pendingEraseRect ? t('tools.erase') : t('tools.remove')}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       )}
     </aside>
+  )
+}
+
+function EraserModePopover({
+  active,
+  brush,
+  setTool,
+  setBrush,
+  shortcuts,
+  t,
+  page,
+}: {
+  active: CanvasTool
+  brush: { diameter: number; color: string; eraserMode: EraserMode; removeMode: RemoveMode }
+  setTool: (tool: CanvasTool) => void
+  setBrush: (brush: { diameter: number; color: string; eraserMode: EraserMode; removeMode: RemoveMode }) => void
+  shortcuts: Record<string, string>
+  t: (key: string) => string
+  page: { id: string } | null | undefined
+}) {
+  return (
+    <Popover>
+      <Tooltip>
+        <PopoverTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  disabled={!page}
+                  aria-label={t('tools.eraser')}
+                  data-active={active === 'eraser'}
+                  className='relative text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground'
+                  onClick={() => setTool('eraser')}
+                />
+              }
+            >
+              <Eraser className='size-4' />
+            </TooltipTrigger>
+          }
+        />
+        <TooltipContent side='right'>
+          {t('tools.eraser')}
+          <span className='ml-2 opacity-60'>{shortcuts.eraser.toUpperCase()}</span>
+        </TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        side='right'
+        align='center'
+        sideOffset={8}
+        className='w-40 gap-1 rounded-xl p-2'
+      >
+        <PopoverTitle className='text-[11px]'>{t('tools.eraserMode')}</PopoverTitle>
+        {eraserModes.map(([mode, Icon]) => (
+          <Button
+            key={mode}
+            type='button'
+            variant={brush.eraserMode === mode ? 'default' : 'ghost'}
+            size='icon'
+            className='w-full justify-start gap-2 rounded-lg px-2 py-1.5'
+            onClick={() => setBrush({ ...brush, eraserMode: mode })}
+          >
+            <Icon className='size-4' />
+            <span className='text-[11px] font-medium'>{t(`tools.eraserMode.${mode}`)}</span>
+          </Button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function RemoveModePopover({
+  active,
+  brush,
+  setTool,
+  setBrush,
+  shortcuts,
+  t,
+  page,
+}: {
+  active: CanvasTool
+  brush: { diameter: number; color: string; eraserMode: EraserMode; removeMode: RemoveMode }
+  setTool: (tool: CanvasTool) => void
+  setBrush: (brush: { diameter: number; color: string; eraserMode: EraserMode; removeMode: RemoveMode }) => void
+  shortcuts: Record<string, string>
+  t: (key: string) => string
+  page: { id: string } | null | undefined
+}) {
+  return (
+    <Popover>
+      <Tooltip>
+        <PopoverTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  disabled={!page}
+                  aria-label={t('tools.remove')}
+                  data-active={active === 'remove'}
+                  className='relative text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground'
+                  onClick={() => setTool('remove')}
+                />
+              }
+            >
+              <Sparkles className='size-4' />
+            </TooltipTrigger>
+          }
+        />
+        <TooltipContent side='right'>
+          {t('tools.remove')}
+          <span className='ml-2 opacity-60'>{shortcuts.remove.toUpperCase()}</span>
+        </TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        side='right'
+        align='center'
+        sideOffset={8}
+        className='w-40 gap-1 rounded-xl p-2'
+      >
+        <PopoverTitle className='text-[11px]'>{t('tools.removeMode')}</PopoverTitle>
+        {removeModes.map(([mode, Icon]) => (
+          <Button
+            key={mode}
+            type='button'
+            variant={brush.removeMode === mode ? 'default' : 'ghost'}
+            size='icon'
+            className='w-full justify-start gap-2 rounded-lg px-2 py-1.5'
+            onClick={() => setBrush({ ...brush, removeMode: mode })}
+          >
+            <Icon className='size-4' />
+            <span className='text-[11px] font-medium'>{t(`tools.removeMode.${mode}`)}</span>
+          </Button>
+        ))}
+      </PopoverContent>
+    </Popover>
   )
 }
 

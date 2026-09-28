@@ -14,6 +14,7 @@ import { expandLayerSelection } from '@/lib/document'
 import {
   controlFrame,
   draftFrame,
+  frameInsideRect,
   hitTestLayers,
   pagePoint,
   physicalPoint,
@@ -54,10 +55,18 @@ const canvasCursors = {
   pan: 'grab',
 } as const satisfies Record<CanvasTool, string | undefined>
 
+function getCursor(tool: CanvasTool, brush: { eraserMode: 'brush' | 'rectangle'; removeMode: 'brush' | 'rectangle' }): string | undefined {
+  if (tool === 'eraser' && brush.eraserMode === 'rectangle') return 'crosshair'
+  if (tool === 'remove' && brush.removeMode === 'rectangle') return 'crosshair'
+  return canvasCursors[tool]
+}
+
 type Gesture =
   | { kind: 'pan'; pointer: number; start: Point; translation: [number, number] }
   | { kind: 'move'; pointer: number; start: Point; originals: TransformFrame[] }
   | { kind: 'text'; pointer: number; start: Point; frame: Frame }
+  | { kind: 'erase_rect'; pointer: number; start: Point; current: Point; layer: string }
+  | { kind: 'remove_rect'; pointer: number; start: Point; current: Point }
   | StrokeGesture
 
 interface StrokeGesture {
@@ -80,6 +89,14 @@ interface StrokeUpdate {
   points: Point[]
 }
 
+interface PendingEraseRect extends Frame {
+  layer: string
+}
+
+interface PendingRemoveRect extends Frame {
+  // No layer needed for remove/inpaint
+}
+
 export function CanvasWorkspace() {
   const { t } = useTranslation()
   const surface = useRef<HTMLDivElement>(null)
@@ -96,6 +113,10 @@ export function CanvasWorkspace() {
   const [draft, setDraft] = useState<Frame | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const [cursor, setCursor] = useState<Point | null>(null)
+  const [eraseRect, setEraseRect] = useState<Frame | null>(null)
+  const [pendingEraseRect, setPendingEraseRect] = useState<PendingEraseRect | null>(null)
+  const [removeRect, setRemoveRect] = useState<Frame | null>(null)
+  const [pendingRemoveRect, setPendingRemoveRect] = useState<PendingRemoveRect | null>(null)
   const colorSampling = useColorSampling()
 
   const page = usePage().data
@@ -221,6 +242,112 @@ export function CanvasWorkspace() {
     setDraft(null)
     setPreviews({})
   }, [canvas, strokeUpdates, transformUpdates])
+
+  const executePendingEraseRect = useCallback(() => {
+    if (!pendingEraseRect || !page || !canvas || canvasRevision === null) return
+    const { layer, x, y, width, height } = pendingEraseRect
+    const rasterLayer = page.layers.find((l) => l.id === layer && l.type === 'raster')
+    if (!rasterLayer) return
+
+    // Generate a grid of points covering the rectangle
+    const spacing = brush.diameter * 0.5 // Overlap brush strokes by 50%
+    const points: Point[] = []
+    for (let px = x; px < x + width; px += spacing) {
+      for (let py = y; py < y + height; py += spacing) {
+        points.push({ x: px, y: py })
+      }
+    }
+
+    if (points.length === 0) return
+
+    setPendingEraseRect(null)
+    strokeUpdates.clear()
+    try {
+      canvas.beginStroke({
+        kind: 'erase',
+        layer,
+        point: points[0],
+        diameter: brush.diameter,
+      })
+    } catch (error) {
+      receiveError(errorMessage(error))
+      return
+    }
+
+    // Schedule all points
+    strokeUpdates.schedule({ kind: 'erase', points })
+    strokeUpdates.commit()
+
+    try {
+      canvas.finishStroke()
+    } catch (error) {
+      receiveError(errorMessage(error))
+      return
+    }
+
+    commitPending.current = true
+    void enqueue(() =>
+      call(commands.commitErase, canvasRevision, layer, points, brush.diameter),
+    )
+      .then((result) => {
+        selectLayers([result.layer])
+        return refresh(projectKey, pagesKey, pageKey)
+      })
+      .catch(() => canvas?.cancelStroke())
+      .finally(() => {
+        commitPending.current = false
+      })
+  }, [pendingEraseRect, page, canvas, canvasRevision, brush.diameter, strokeUpdates, enqueue, selectLayers])
+
+  const executePendingRemoveRect = useCallback(() => {
+    if (!pendingRemoveRect || !page || !canvas || canvasRevision === null) return
+    const { x, y, width, height } = pendingRemoveRect
+
+    // Generate a grid of points covering the rectangle
+    const spacing = brush.diameter * 0.5 // Overlap brush strokes by 50%
+    const points: Point[] = []
+    for (let px = x; px < x + width; px += spacing) {
+      for (let py = y; py < y + height; py += spacing) {
+        points.push({ x: px, y: py })
+      }
+    }
+
+    if (points.length === 0) return
+
+    setPendingRemoveRect(null)
+    strokeUpdates.clear()
+    try {
+      canvas.beginStroke({
+        kind: 'inpaint',
+        layer: null,
+        point: points[0],
+        diameter: brush.diameter,
+      })
+    } catch (error) {
+      receiveError(errorMessage(error))
+      return
+    }
+
+    // Schedule all points
+    strokeUpdates.schedule({ kind: 'inpaint', points })
+    strokeUpdates.commit()
+
+    try {
+      canvas.finishStroke()
+    } catch (error) {
+      receiveError(errorMessage(error))
+      return
+    }
+
+    commitPending.current = true
+    void enqueue(() =>
+      call(commands.commitInpaint, canvasRevision, points, brush.diameter),
+    )
+      .catch(() => canvas?.cancelStroke())
+      .finally(() => {
+        commitPending.current = false
+      })
+  }, [pendingRemoveRect, page, canvas, canvasRevision, brush.diameter, strokeUpdates, enqueue])
 
   const fitCanvas = useCallback(() => {
     const element = surface.current
@@ -362,6 +489,12 @@ export function CanvasWorkspace() {
         selectLayers([])
         return
       }
+      if (event.key === 'Enter' && (pendingEraseRect || pendingRemoveRect)) {
+        event.preventDefault()
+        if (pendingEraseRect) executePendingEraseRect()
+        else if (pendingRemoveRect) executePendingRemoveRect()
+        return
+      }
       const next = (
         ['select', 'text', 'draw', 'eraser', 'color_picker', 'remove', 'pan'] as const
       ).find((action) => state.shortcuts[action] === event.key.toLowerCase())
@@ -385,7 +518,7 @@ export function CanvasWorkspace() {
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', blur)
     }
-  }, [cancelGesture, colorSampling, page, requestCanvasFit, selectLayers, setTool])
+  }, [cancelGesture, colorSampling, page, requestCanvasFit, selectLayers, setTool, pendingEraseRect, pendingRemoveRect, executePendingEraseRect, executePendingRemoveRect])
 
   const clientPagePoint = (clientX: number, clientY: number) =>
     pagePoint(
@@ -456,6 +589,32 @@ export function CanvasWorkspace() {
     } else if (current.kind === 'text') {
       current.frame = draftFrame(current.start, point)
       setDraft(current.frame)
+    } else if (current.kind === 'erase_rect') {
+      current.current = point
+      const x = Math.min(current.start.x, point.x)
+      const y = Math.min(current.start.y, point.y)
+      const width = Math.abs(point.x - current.start.x)
+      const height = Math.abs(point.y - current.start.y)
+      setEraseRect({
+        x,
+        y,
+        width,
+        height,
+        angle_degrees: 0,
+      })
+    } else if (current.kind === 'remove_rect') {
+      current.current = point
+      const x = Math.min(current.start.x, point.x)
+      const y = Math.min(current.start.y, point.y)
+      const width = Math.abs(point.x - current.start.x)
+      const height = Math.abs(point.y - current.start.y)
+      setRemoveRect({
+        x,
+        y,
+        width,
+        height,
+        angle_degrees: 0,
+      })
     } else if (current.kind === 'paint' || current.kind === 'erase' || current.kind === 'inpaint') {
       current.points.push(...points)
       strokeUpdates.schedule({ kind: current.kind, points })
@@ -482,6 +641,20 @@ export function CanvasWorkspace() {
           return refresh(projectKey, pagesKey, pageKey)
         })
         .catch(() => undefined)
+    } else if (current.kind === 'erase_rect') {
+      setEraseRect(null)
+      const x = Math.min(current.start.x, current.current.x)
+      const y = Math.min(current.start.y, current.current.y)
+      const width = Math.abs(current.current.x - current.start.x)
+      const height = Math.abs(current.current.y - current.start.y)
+      setPendingEraseRect({ x, y, width, height, angle_degrees: 0, layer: current.layer })
+    } else if (current.kind === 'remove_rect') {
+      setRemoveRect(null)
+      const x = Math.min(current.start.x, current.current.x)
+      const y = Math.min(current.start.y, current.current.y)
+      const width = Math.abs(current.current.x - current.start.x)
+      const height = Math.abs(current.current.y - current.start.y)
+      setPendingRemoveRect({ x, y, width, height, angle_degrees: 0 })
     } else if (current.kind === 'paint' || current.kind === 'erase' || current.kind === 'inpaint') {
       strokeUpdates.commit()
       try {
@@ -528,7 +701,12 @@ export function CanvasWorkspace() {
     <main className='relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-tl-2xl bg-[var(--surface-canvas)]'>
       <CanvasCommandBar />
       <div className='relative flex min-h-0 min-w-0 flex-1'>
-        <ToolBar />
+        <ToolBar
+          pendingEraseRect={pendingEraseRect}
+          pendingRemoveRect={pendingRemoveRect}
+          onExecuteEraseRect={executePendingEraseRect}
+          onExecuteRemoveRect={executePendingRemoveRect}
+        />
         <div
           ref={surface}
           tabIndex={0}
@@ -536,7 +714,7 @@ export function CanvasWorkspace() {
           aria-busy={page ? canvasState.status !== 'ready' : undefined}
           className='relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden bg-[var(--surface-canvas)] outline-none'
           style={{
-            cursor: page && canvasState.status === 'ready' ? canvasCursors[tool] : undefined,
+            cursor: page && canvasState.status === 'ready' ? getCursor(tool, brush) : undefined,
           }}
           onContextMenu={(event) => event.preventDefault()}
           onPointerDown={(event) => {
@@ -617,46 +795,65 @@ export function CanvasWorkspace() {
                 receiveError('Select a paint or cleanup layer before using the Eraser.')
                 return
               }
-              strokeUpdates.clear()
-              gesture.current = {
-                kind: 'erase',
-                pointer: event.pointerId,
-                revision: canvasRevision,
-                layer: activeRaster.id,
-                points: [point],
-                diameter: brush.diameter,
-              }
-              try {
-                canvas.beginStroke({
-                  kind: 'erase',
+              if (brush.eraserMode === 'rectangle') {
+                gesture.current = {
+                  kind: 'erase_rect',
+                  pointer: event.pointerId,
+                  start: point,
+                  current: point,
                   layer: activeRaster.id,
-                  point,
+                }
+              } else {
+                strokeUpdates.clear()
+                gesture.current = {
+                  kind: 'erase',
+                  pointer: event.pointerId,
+                  revision: canvasRevision,
+                  layer: activeRaster.id,
+                  points: [point],
                   diameter: brush.diameter,
-                })
-              } catch (error) {
-                gesture.current = null
-                receiveError(errorMessage(error))
+                }
+                try {
+                  canvas.beginStroke({
+                    kind: 'erase',
+                    layer: activeRaster.id,
+                    point,
+                    diameter: brush.diameter,
+                  })
+                } catch (error) {
+                  gesture.current = null
+                  receiveError(errorMessage(error))
+                }
               }
             } else if (tool === 'remove') {
-              strokeUpdates.clear()
-              gesture.current = {
-                kind: 'inpaint',
-                pointer: event.pointerId,
-                revision: canvasRevision,
-                layer: null,
-                points: [point],
-                diameter: brush.diameter,
-              }
-              try {
-                canvas.beginStroke({
+              if (brush.removeMode === 'rectangle') {
+                gesture.current = {
+                  kind: 'remove_rect',
+                  pointer: event.pointerId,
+                  start: point,
+                  current: point,
+                }
+              } else {
+                strokeUpdates.clear()
+                gesture.current = {
                   kind: 'inpaint',
+                  pointer: event.pointerId,
+                  revision: canvasRevision,
                   layer: null,
-                  point,
+                  points: [point],
                   diameter: brush.diameter,
-                })
-              } catch (error) {
-                gesture.current = null
-                receiveError(errorMessage(error))
+                }
+                try {
+                  canvas.beginStroke({
+                    kind: 'inpaint',
+                    layer: null,
+                    point,
+                    diameter: brush.diameter,
+                  })
+                } catch (error) {
+                  gesture.current = null
+                  receiveError(errorMessage(error))
+                }
               }
             } else if (tool === 'color_picker') {
               void canvas
@@ -759,10 +956,74 @@ export function CanvasWorkspace() {
               draft={draft}
               cursor={cursor}
               brushSize={brush.diameter}
-              showBrushCursor={isBrushTool(tool)}
+              showBrushCursor={isBrushTool(tool) && !((tool === 'eraser' && brush.eraserMode === 'rectangle') || (tool === 'remove' && brush.removeMode === 'rectangle'))}
               onTransformStart={beginTransform}
               onTransformFrame={updateTransform}
               onTransformEnd={finishTransform}
+            />
+          )}
+          {eraseRect && (
+            <div
+              data-testid='erase-rectangle'
+              className='pointer-events-none absolute z-10 border-2 border-dashed border-red-500 bg-red-500/10'
+              style={{
+                left:
+                  (eraseRect.x * camera.zoom + camera.translation[0]) /
+                  window.devicePixelRatio,
+                top:
+                  (eraseRect.y * camera.zoom + camera.translation[1]) /
+                  window.devicePixelRatio,
+                width: eraseRect.width * camera.zoom / window.devicePixelRatio,
+                height: eraseRect.height * camera.zoom / window.devicePixelRatio,
+              }}
+            />
+          )}
+          {pendingEraseRect && (
+            <div
+              data-testid='pending-erase-rectangle'
+              className='pointer-events-none absolute z-10 border-2 border-solid border-red-500 bg-red-500/20'
+              style={{
+                left:
+                  (pendingEraseRect.x * camera.zoom + camera.translation[0]) /
+                  window.devicePixelRatio,
+                top:
+                  (pendingEraseRect.y * camera.zoom + camera.translation[1]) /
+                  window.devicePixelRatio,
+                width: pendingEraseRect.width * camera.zoom / window.devicePixelRatio,
+                height: pendingEraseRect.height * camera.zoom / window.devicePixelRatio,
+              }}
+            />
+          )}
+          {removeRect && (
+            <div
+              data-testid='remove-rectangle'
+              className='pointer-events-none absolute z-10 border-2 border-dashed border-blue-500 bg-blue-500/10'
+              style={{
+                left:
+                  (removeRect.x * camera.zoom + camera.translation[0]) /
+                  window.devicePixelRatio,
+                top:
+                  (removeRect.y * camera.zoom + camera.translation[1]) /
+                  window.devicePixelRatio,
+                width: removeRect.width * camera.zoom / window.devicePixelRatio,
+                height: removeRect.height * camera.zoom / window.devicePixelRatio,
+              }}
+            />
+          )}
+          {pendingRemoveRect && (
+            <div
+              data-testid='pending-remove-rectangle'
+              className='pointer-events-none absolute z-10 border-2 border-solid border-blue-500 bg-blue-500/20'
+              style={{
+                left:
+                  (pendingRemoveRect.x * camera.zoom + camera.translation[0]) /
+                  window.devicePixelRatio,
+                top:
+                  (pendingRemoveRect.y * camera.zoom + camera.translation[1]) /
+                  window.devicePixelRatio,
+                width: pendingRemoveRect.width * camera.zoom / window.devicePixelRatio,
+                height: pendingRemoveRect.height * camera.zoom / window.devicePixelRatio,
+              }}
             />
           )}
           {page && canvasState.status === 'error' && (

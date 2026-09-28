@@ -221,7 +221,7 @@ describe('canvas interaction adapter', () => {
 
   it('previews brush input locally and sends only the durable paint commit to Rust', async () => {
     installProject()
-    useKoharuStore.setState({ tool: 'draw', brush: { diameter: 48, color: '#FFFFFF' } })
+    useKoharuStore.setState({ tool: 'draw', brush: { diameter: 48, color: '#FFFFFF', eraserMode: 'brush', removeMode: 'brush' } })
     const commit = vi
       .spyOn(commands, 'commitPaint')
       .mockResolvedValue({ revision: 2, layer: 'paint' })
@@ -253,7 +253,7 @@ describe('canvas interaction adapter', () => {
     ['generation', { canvasGeneration: 2 }],
   ])('cancels an active gesture when the canvas %s changes', async (_name, update) => {
     installProject()
-    useKoharuStore.setState({ tool: 'draw', brush: { diameter: 48, color: '#FFFFFF' } })
+    useKoharuStore.setState({ tool: 'draw', brush: { diameter: 48, color: '#FFFFFF', eraserMode: 'brush', removeMode: 'brush' } })
     const commit = vi
       .spyOn(commands, 'commitPaint')
       .mockResolvedValue({ revision: 2, layer: 'paint' })

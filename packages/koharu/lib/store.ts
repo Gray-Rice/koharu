@@ -17,6 +17,8 @@ import type {
 import { toast } from '@koharu/ui/components/toast'
 
 export type CanvasTool = 'select' | 'text' | 'draw' | 'eraser' | 'color_picker' | 'remove' | 'pan'
+export type EraserMode = 'brush' | 'rectangle'
+export type RemoveMode = 'brush' | 'rectangle'
 export const MIN_BRUSH_DIAMETER = 1
 export const MAX_BRUSH_DIAMETER = 128
 
@@ -27,6 +29,8 @@ export function isBrushTool(tool: CanvasTool): boolean {
 export interface CanvasBrush {
   diameter: number
   color: string
+  eraserMode: EraserMode
+  removeMode: RemoveMode
 }
 export type InspectorSection = 'copy' | 'type' | 'layers'
 export type ShortcutAction = CanvasTool | 'fit'
@@ -99,7 +103,7 @@ export const useKoharuStore = create<KoharuStore>()((set) => ({
   selectedLayers: [],
   selectedPages: [],
   tool: 'select',
-  brush: { diameter: 48, color: '#FFFFFF' },
+  brush: { diameter: 48, color: '#FFFFFF', eraserMode: 'brush', removeMode: 'brush' },
   inspector: 'copy',
   processingScope: 'selected-pages',
   processingStages: [...pipelineStages],
@@ -112,7 +116,7 @@ export const useKoharuStore = create<KoharuStore>()((set) => ({
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   selectLayers: (selectedLayers) => set({ selectedLayers: [...new Set(selectedLayers)] }),
   setTool: (tool) => set({ tool }),
-  setBrush: (brush) => set({ brush }),
+  setBrush: (brush) => set((state) => ({ brush: { ...state.brush, ...brush } })),
   setShortcut: (action, key) =>
     set((state) => ({
       shortcuts: { ...state.shortcuts, [action]: key.toLowerCase().slice(0, 1) },
