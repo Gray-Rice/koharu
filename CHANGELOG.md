@@ -1,3 +1,17 @@
+## [0.83.5](https://github.com/koharu-rs/koharu/compare/0.83.4..0.83.5) - 2026-09-22
+
+### 🐛 Bug Fixes
+
+- *(ci)* Recover incomplete release asset uploads - ([19430a0](https://github.com/koharu-rs/koharu/commit/19430a0810f83b0eb2f85045968301557c27ea8b))
+
+
+## [0.83.4](https://github.com/koharu-rs/koharu/compare/0.83.3..0.83.4) - 2026-09-17
+
+### 🐛 Bug Fixes
+
+- *(deps)* Align gpu-allocator Windows bindings - ([19197a7](https://github.com/koharu-rs/koharu/commit/19197a77481d4a36e2091dec163014886ff6743f))
+
+
 ## [0.83.3](https://github.com/koharu-rs/koharu/compare/0.83.2..0.83.3) - 2026-09-16
 
 ### 🐛 Bug Fixes
