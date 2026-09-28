@@ -1,22 +1,14 @@
-<h1 align="center">Koharu</h1>
+<h1 align="center">Koharu-Ex</h1>
 
-<p align="center">ML-powered manga translator, written in <b>Rust</b>.</p>
+<p align="center">Fork of Koharu a ML-powered manga translator, written in <b>Rust</b>.</p>
 
-<p align="center">
-<a href="https://github.com/koharu-rs/koharu/releases/latest" target="_blank"><img alt="GitHub Downloads (all assets, all releases)" src="https://img.shields.io/github/downloads/koharu-rs/koharu/total?style=for-the-badge&link=https%3A%2F%2Fgithub.com%2Fkoharu-rs%2Fkoharu%2Freleases%2Flatest"></a>
-</p>
+<p> This Fork contains experimental features not implemented, planned or rejected by the original Koharu team. The list of added features can be found <a href="#extras">here</a>. Please don't raise bugs that occur with this fork to the mainstream project.</p>
 
-<p align="center">
-<a href="https://trendshift.io/repositories/20649" target="_blank"><img src="https://trendshift.io/api/badge/repositories/20649" alt="koharu-rs%2Fkoharu | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</p>
 
 <p align="center">
-<a href="https://koharu.rs/en/installation" target="_blank">Getting Started</a> · <a href="https://koharu.rs/" target="_blank">Docs</a> · <a href="https://github.com/koharu-rs/koharu/issues" target="_blank">Bug reports</a> · <a href="https://discord.gg/mHvHkxGnUY" target="_blank">Discord</a>
+<a href="https://koharu.rs/en/installation" target="_blank">Getting Started</a> · <a href="https://koharu.rs/" target="_blank">Official Docs</a> · <a href="https://github.com/gray-rice/koharu-ex/issues" target="_blank">Bug reports</a> · 
 </p>
 
-<p align="center">
-<a href="https://koharu.rs/ja" target="_blank">日本語</a> | <a href="https://koharu.rs/zh" target="_blank">简体中文</a>
-</p>
 
 Koharu introduces a local-first workflow for manga translation, utilizing the power of ML to automate the process. It combines the capabilities of object detection, OCR, inpainting, and LLMs to create a seamless translation experience.
 
@@ -27,10 +19,14 @@ Koharu introduces a local-first workflow for manga translation, utilizing the po
 
 ![screenshot](packages/docs/screenshot.png)
 
-> [!NOTE]
-> Join our [Discord server](https://discord.gg/mHvHkxGnUY) for support and discussion.
 
 ## Features
+
+### Extras
+- Rectangle Selection for Eraser & Remove Tools for easy and precise cleanups.
+- Fine grained export options to allow individual/group exports of selected pages without having to export entire project.
+
+### Existing Features
 
 - [Multi-format project management](https://koharu.rs/en/guides/projects) for raster images, archives, and PDFs with page sequencing
 - [Selective pipeline](https://koharu.rs/en/guides/processing) for detection, OCR, translation, and inpainting at page or project scope
@@ -138,25 +134,13 @@ OpenAI-compatible endpoints are also supported.
 
 ## Installation
 
-Download release builds from the [releases page](https://github.com/koharu-rs/koharu/releases/latest). [Installation requirements and first launch](https://koharu.rs/en/installation) vary by operating system.
+Download release builds from the [releases page](https://github.com/gray-rice/koharu-ex/releases/latest). [Installation requirements and first launch (official docs)](https://koharu.rs/en/installation) vary by operating system.
 
-Builds are available for Windows, macOS, and Linux.
+Builds are only available for Linux.
 
-### WinGet
+Windows and MacOS users are requested to refer [Development](#development) section and build their packages.
 
-Install on Windows with [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
 
-```bash
-winget install koharu
-```
-
-### Homebrew
-
-Install on macOS with [Homebrew](https://brew.sh/):
-
-```bash
-brew install --cask koharu
-```
 
 ## Troubleshooting
 
@@ -201,24 +185,16 @@ The executable is written to `target/release`.
 
 ## Sponsorship
 
-If Koharu is useful in your workflow, consider sponsoring the project.
+If Koharu is useful in your workflow, consider sponsoring the original project and its creators.
 
 - [GitHub Sponsors](https://github.com/sponsors/mayocream)
 - [Patreon](https://www.patreon.com/mayocream)
 
-![sponsors](./.github/sponsorkit/sponsors.svg)
 
 ## Contributors ❤️
 
-Thanks to all the contributors who have helped make Koharu better!
-
-<a href="https://github.com/koharu-rs/koharu/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=koharu-rs/koharu" />
-</a>
+Thanks to the original creator [Mayo Takanashi](https://github.com/mayocream) and contributors !
 
 ## License
 
-Copyright 2025-2026 Mayo Takanashi and Koharu contributors.
-
-Koharu is dual-licensed under the [MIT License](LICENSE-MIT) or the
-[Apache License, Version 2.0](LICENSE-APACHE), at your option.
+This fork of Koharu is licensed under the [MIT License](LICENSE-MIT)
