@@ -145,8 +145,7 @@ OpenAI-compatible endpoints are also supported.
 Builds are only available for Linux and Windows.
 
 >[!NOTE]
-> - The current release builds are unsigned. May or may not change in the future.
-> - I have no plans to create prebuilt binaries for MacOS.
+> I have no plans to create prebuilt binaries for MacOS.
 
 Download release builds from the [releases page](https://github.com/gray-rice/koharu-ex/releases/latest). [Installation requirements and first launch (official docs)](https://koharu.rs/en/installation) vary by operating system.
 
