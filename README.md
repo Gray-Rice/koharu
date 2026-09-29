@@ -2,11 +2,16 @@
 
 <p align="center">Fork of Koharu a ML-powered manga translator, written in <b>Rust</b>.</p>
 
-<p> This Fork contains experimental features not implemented, planned or rejected by the original Koharu team. The list of added features can be found <a href="#extras">here</a>. Please don't raise bugs that occur with this fork to the mainstream project.</p>
+<p> This Fork contains experimental features not implemented, planned or rejected by the original Koharu team. The list of added features can be found <a href="#extras">here</a>. And refer the <a href="https://github.com/gray-rice/koharu-ex/wiki">Fork Docs </a> for documentation of the added features.<br></p>
 
+> [!Important]
+> **If you have an issue that happens with my fork, provided from this repository, that does not happen on the original koharu app, please do not open a bug report it on their bug trackers.**
+>
+> Instead, open an issue on this repository's issue tracker: https://github.com/gray-rice/koharu-ex/issues
+>
+> I am not affiliated with [koharu-rs](https://github.com/koharu-rs) and the original creator [Mayo Takanashi](https://github.com/mayocream)
 
-<p align="center">
-<a href="https://koharu.rs/en/installation" target="_blank">Getting Started</a> · <a href="https://koharu.rs/" target="_blank">Official Docs</a> · <a href="https://github.com/gray-rice/koharu-ex/issues" target="_blank">Bug reports</a> · 
+<p align="center"> · <a href="https://koharu.rs/" target="_blank">Official Docs</a> · <a href="https://github.com/gray-rice/koharu-ex/wiki" targer="_blank">Fork Docs</a> · 
 </p>
 
 
@@ -14,6 +19,7 @@ Koharu introduces a local-first workflow for manga translation, utilizing the po
 
 > [!NOTE]
 > Koharu runs its vision models and LLMs **locally** on your machine to keep your data private and secure.
+> It also supports third party providers for translation, which are subject to their terms and conditions.
 
 ---
 
@@ -22,9 +28,11 @@ Koharu introduces a local-first workflow for manga translation, utilizing the po
 
 ## Features
 
-### Extras
-- Rectangle Selection for Eraser & Remove Tools for easy and precise cleanups.
-- Fine grained export options to allow individual/group exports of selected pages without having to export entire project.
+### Extras (Refer Project Wiki for more details)
+- **Translation Import/Export:** JSON-based translation exchange with page-level granularity for collaborative workflows.
+- **Rectangle Selection for Eraser & Remove Tools:** Precise region selection for targeted cleanup and inpainting.
+- **Multi Layer select:** Drag to select multiple layers.
+- **Fine grained export options:** Options for individual/group exports of selected pages without having to export entire project.
 
 ### Existing Features
 
@@ -134,12 +142,15 @@ OpenAI-compatible endpoints are also supported.
 
 ## Installation
 
-Builds are only available for Linux-x86 64-bit systems.
+Builds are only available for Linux and Windows.
+
+>[!NOTE]
+> - The current release builds are unsigned. May or may not change in the future.
+> - I have no plans to create prebuilt binaries for MacOS.
 
 Download release builds from the [releases page](https://github.com/gray-rice/koharu-ex/releases/latest). [Installation requirements and first launch (official docs)](https://koharu.rs/en/installation) vary by operating system.
 
-Linux ARM, Windows and MacOS users are requested to refer [Development](#development) section and build their packages.<br>
-Linux ARM and windows builds are planned, I have no plans to support MacOS.
+MacOS users are requested to refer [Development](#development) section and build their packages.
 
 
 
