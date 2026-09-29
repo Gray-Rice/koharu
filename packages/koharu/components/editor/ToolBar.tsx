@@ -164,15 +164,14 @@ export function ToolBar({
                 render={
                   <Button
                     type='button'
-                    variant='destructive'
                     size='icon'
-                    className='rounded-lg shadow-lg'
+                    className='rounded-lg bg-primary/80 hover:bg-primary/90 text-primary-foreground'
                     onClick={() => {
                       if (pendingEraseRect && onExecuteEraseRect) onExecuteEraseRect()
                       else if (pendingRemoveRect && onExecuteRemoveRect) onExecuteRemoveRect()
                     }}
                   >
-                    <Check className='size-4' />
+                    <Check className='size-4 fill-current' />
                   </Button>
                 }
               />

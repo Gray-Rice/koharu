@@ -238,7 +238,9 @@
     "sourceLabel": "{{name}} source text",
     "textName": "Text {{index}}",
     "title": "Layers",
-    "translationLabel": "{{name}} translation"
+    "translation": "Translation",
+    "translationLabel": "{{name}} translation",
+    "translationOptions": "Translation options"
   },
   "menu": {
     "about": "About",
@@ -247,12 +249,16 @@
     "discord": "Discord",
     "edit": "Edit",
     "export": "Export Project",
+    "exportAction": "Export",
     "exportPages": "Export Pages",
+    "exportTranslations": "Export Translations...",
     "file": "File",
     "fit": "Fit Window",
     "github": "GitHub",
     "help": "Help",
     "import": "Import Pages",
+    "importAction": "Import",
+    "importTranslations": "Import Translations...",
     "process": "Process",
     "processLayers": "Process Selected Layers",
     "processPages": "Process Selected Pages",
@@ -261,6 +267,7 @@
     "runPhase": "Run {{phase}}",
     "selectAllLayers": "Select All Layers",
     "settings": "Settings",
+    "translations": "Translations",
     "undo": "Undo",
     "view": "View"
   },

@@ -8,6 +8,7 @@ pub(crate) mod output;
 pub(crate) mod preferences;
 pub(crate) mod processing;
 pub(crate) mod project;
+pub(crate) mod translation;
 
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -107,6 +108,9 @@ pub fn bindings() -> tauri_specta::Builder<tauri_runtime_cef::CefRuntime> {
             canvas::commit_erase,
             canvas::commit_transform,
             canvas::commit_inpaint,
+            translation::export_translations,
+            translation::import_translations,
+            translation::import_translations_from_data,
         ])
         .disable_serde_phases()
         .error_handling(ErrorHandlingMode::Throw)

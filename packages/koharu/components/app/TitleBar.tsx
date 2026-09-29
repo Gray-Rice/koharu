@@ -1,7 +1,7 @@
 'use client'
 
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { FilePlus2, FolderOpen, LoaderCircle, Settings } from 'lucide-react'
+import { FilePlus2, FileUp, FileDown, FolderOpen, LoaderCircle, Settings } from 'lucide-react'
 import Image from 'next/image'
 import { useState, type ComponentProps } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -61,6 +61,23 @@ export function TitleBar() {
     ['export-pages'],
     commands.exportPages,
     'menu.exportPages',
+  )
+  const { run: exportTranslations, busy: exportingTranslations } = useCommand(
+    ['export-translations'],
+    commands.exportTranslations,
+    'menu.exportTranslations',
+  )
+  const { run: importTranslations, busy: importingTranslations } = useCommand(
+    ['import-translations'],
+    commands.importTranslations,
+    'menu.importTranslations',
+    async () => {
+      await refresh(pageKey);
+      const currentPage = useKoharuStore.getState().canvasPage;
+      if (currentPage) {
+        await call(commands.prepareCanvasPage, currentPage);
+      }
+    },
   )
 
   const run = (scope: Scope, operation: Operation = { operation: 'full' }) =>
@@ -153,6 +170,32 @@ export function TitleBar() {
                       {format.toUpperCase()}…
                     </MenubarItem>
                   ))}
+                </MenubarSubContent>
+              </MenubarSub>
+              <MenubarSub>
+                <MenubarSubTrigger
+                  disabled={!project || pages.length === 0 || (exportingTranslations || importingTranslations)}
+                  aria-busy={exportingTranslations || importingTranslations}
+                  className='min-h-8 gap-1.5 px-2 py-1 text-xs'
+                >
+                  {(exportingTranslations || importingTranslations) && <LoaderCircle className='animate-spin' aria-hidden='true' />}
+                  {t('menu.translations')}
+                </MenubarSubTrigger>
+                <MenubarSubContent className='min-w-40 p-1'>
+                  <MenubarItem
+                    disabled={exportingTranslations}
+                    onClick={(e) => exportTranslations(null)}
+                  >
+                    <FileUp className='size-3' />
+                    {t('menu.exportTranslations')}
+                  </MenubarItem>
+                  <MenubarItem
+                    disabled={importingTranslations}
+                    onClick={(e) => importTranslations()}
+                  >
+                    <FileDown className='size-3' />
+                    {t('menu.importTranslations')}
+                  </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
               <MenubarSeparator />

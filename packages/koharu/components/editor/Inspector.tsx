@@ -11,6 +11,8 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  FileUp,
+  FileDown,
   Folder,
   Image as ImageIcon,
   Layers3,
@@ -35,7 +37,7 @@ import {
   isTextLayer,
   layerChildren,
 } from '@/lib/document'
-import { pageKey, projectKey, queryClient, refresh, useFonts, usePage } from '@/lib/queries'
+import { pageKey, projectKey, queryClient, refresh, useCommand, useFonts, usePage } from '@/lib/queries'
 import { useKoharuStore } from '@/lib/store'
 import { previewCanvasOpacity } from '@koharu/bridge/canvas'
 import {
@@ -55,6 +57,8 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@koharu/ui/components/dropdown-menu'
 import {
   NumberField,
@@ -501,6 +505,23 @@ function LayersInspector() {
   const [movingLayer, setMovingLayer] = useState<EntityId | null>(null)
   const anchor = useRef<EntityId | null>(null)
 
+  const { run: exportPageTranslations, busy: exportingPageTranslations } = useCommand(
+    ['export-page-translations'],
+    () => commands.exportTranslations(page ? [page.id] : null),
+    'menu.exportTranslations',
+  )
+  const { run: importPageTranslations, busy: importingPageTranslations } = useCommand(
+    ['import-page-translations'],
+    commands.importTranslations,
+    'menu.importTranslations',
+    async () => {
+      await refresh(pageKey);
+      if (page) {
+        await call(commands.prepareCanvasPage, page.id);
+      }
+    },
+  )
+
   useEffect(() => {
     setExpandedLayer(selected.length === 1 ? (selected[0] ?? null) : null)
   }, [selected])
@@ -585,12 +606,45 @@ function LayersInspector() {
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
-      <header className='flex h-8 shrink-0 items-center gap-1.5 border-b border-border/80 px-2'>
-        <Layers3 className='size-3 text-primary' />
-        <h2 className='text-[10px] font-semibold'>{t('layers.title')}</h2>
-        <span className='text-[9px] text-muted-foreground tabular-nums'>
-          {page.layers.filter((layer) => !isGroupLayer(layer)).length}
-        </span>
+      <header className='flex h-8 shrink-0 items-center justify-between gap-1.5 border-b border-border/80 px-2'>
+        <div className='flex items-center gap-1.5'>
+          <Layers3 className='size-3 text-primary' />
+          <h2 className='text-[10px] font-semibold'>{t('layers.title')}</h2>
+          <span className='text-[9px] text-muted-foreground tabular-nums'>
+            {page.layers.filter((layer) => !isGroupLayer(layer)).length}
+          </span>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-6 gap-1.5 px-2'
+                title={t('layers.translationOptions')}
+              >
+                <span className='text-[10px] font-medium'>{t('layers.translation')}</span>
+                <ChevronDown className='size-3' />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align='end' className='w-32'>
+            <DropdownMenuItem
+              disabled={exportingPageTranslations}
+              onClick={() => exportPageTranslations()}
+            >
+              <FileUp className='size-3 mr-2' />
+              <span className='text-xs'>{t('menu.exportAction')}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={importingPageTranslations}
+              onClick={() => importPageTranslations()}
+            >
+              <FileDown className='size-3 mr-2' />
+              <span className='text-xs'>{t('menu.importAction')}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       <ScrollArea className='min-h-0 flex-1'>

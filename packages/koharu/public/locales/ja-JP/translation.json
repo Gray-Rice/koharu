@@ -238,7 +238,9 @@
     "sourceLabel": "{{name}}の原文",
     "textName": "テキスト {{index}}",
     "title": "レイヤー",
-    "translationLabel": "{{name}}の翻訳"
+    "translation": "翻訳",
+    "translationLabel": "{{name}}の翻訳",
+    "translationOptions": "翻訳オプション"
   },
   "menu": {
     "about": "Koharuについて",
@@ -247,11 +249,16 @@
     "discord": "Discord",
     "edit": "編集",
     "export": "プロジェクトを書き出す",
+    "exportAction": "書き出し",
+    "exportPages": "ページを書き出す",
+    "exportTranslations": "翻訳を書き出す...",
     "file": "ファイル",
     "fit": "ウィンドウに合わせる",
     "github": "GitHub",
     "help": "ヘルプ",
     "import": "ページを読み込む",
+    "importAction": "読み込み",
+    "importTranslations": "翻訳を読み込む...",
     "process": "処理",
     "processLayers": "選択したレイヤーを処理",
     "processPages": "選択ページを処理",
@@ -260,6 +267,7 @@
     "runPhase": "{{phase}}を実行",
     "selectAllLayers": "すべてのレイヤーを選択",
     "settings": "設定",
+    "translations": "翻訳",
     "undo": "元に戻す",
     "view": "表示"
   },
