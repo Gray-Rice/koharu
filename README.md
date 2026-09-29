@@ -2,7 +2,8 @@
 
 <p align="center">Fork of Koharu a ML-powered manga translator, written in <b>Rust</b>.</p>
 
-<p> This Fork contains experimental features not implemented, planned or rejected by the original Koharu team. The list of added features can be found <a href="#extras">here</a>. And refer the <a href="https://github.com/gray-rice/koharu-ex/wiki">Fork Docs </a> for documentation of the added features.<br></p>
+<p> This Fork contains experimental features not implemented, planned or rejected by the original Koharu team. The list of added features can be found <a href="#extras">here</a>. And refer the <a href="https://github.com/gray-rice/koharu-ex/wiki">Fork Docs </a> for documentation of the added features.<br>
+<b> The current release is based on the major version v0.83.X </b></p>
 
 > [!Important]
 > **If you have an issue that happens with my fork, provided from this repository, that does not happen on the original koharu app, please do not open a bug report it on their bug trackers.**

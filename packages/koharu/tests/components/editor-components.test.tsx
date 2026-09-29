@@ -481,8 +481,9 @@ describe('greenfield editor', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Help' }))
     await user.click(await screen.findByRole('menuitem', { name: 'About' }))
 
-    expect(await screen.findByRole('heading', { name: 'Koharu' })).toBeInTheDocument()
-    expect(await screen.findByText('0.83.5.2')).toBeInTheDocument()
+
+    expect(await screen.findByRole('heading', { name: 'Koharu-EX' })).toBeInTheDocument()
+    expect(await screen.findByText('0.83.1')).toBeInTheDocument()
     expect(screen.getByText('GrayRice')).toBeInTheDocument()
     expect(nativeGetVersion).toHaveBeenCalledTimes(1)
   })
