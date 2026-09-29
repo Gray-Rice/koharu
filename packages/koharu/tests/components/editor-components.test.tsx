@@ -470,12 +470,8 @@ describe('greenfield editor', () => {
     render(<TitleBar />)
 
     await user.click(screen.getByRole('menuitem', { name: 'Help' }))
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Discord' }))
-    expect(nativeOpenUrl).toHaveBeenLastCalledWith('https://discord.gg/mHvHkxGnUY')
-
-    await user.click(screen.getByRole('menuitem', { name: 'Help' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'GitHub' }))
-    expect(nativeOpenUrl).toHaveBeenLastCalledWith('https://github.com/koharu-rs/koharu')
+    expect(nativeOpenUrl).toHaveBeenLastCalledWith('https://github.com/gray-rice/koharu-ex')
   })
 
   it('shows the current version and author in About', async () => {
@@ -486,8 +482,8 @@ describe('greenfield editor', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'About' }))
 
     expect(await screen.findByRole('heading', { name: 'Koharu' })).toBeInTheDocument()
-    expect(await screen.findByText('0.62.0')).toBeInTheDocument()
-    expect(screen.getByText('Mayo Takanashi')).toBeInTheDocument()
+    expect(await screen.findByText('0.83.5.2')).toBeInTheDocument()
+    expect(screen.getByText('GrayRice')).toBeInTheDocument()
     expect(nativeGetVersion).toHaveBeenCalledTimes(1)
   })
 

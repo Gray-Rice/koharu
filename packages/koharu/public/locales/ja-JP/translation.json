@@ -73,7 +73,7 @@
     "reset": "リセット"
   },
   "errors": {
-    "fatalTitle": "Koharuを続行できませんでした",
+    "fatalTitle": "Koharu-EXを続行できませんでした",
     "tryAgain": "再試行"
   },
   "fontPicker": {

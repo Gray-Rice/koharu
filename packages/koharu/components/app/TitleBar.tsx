@@ -98,7 +98,7 @@ export function TitleBar() {
             <Image
               className='pointer-events-none'
               src='/icon.png'
-              alt='Koharu'
+              alt='Koharu-EX'
               width={17}
               height={17}
               draggable={false}
@@ -314,13 +314,8 @@ export function TitleBar() {
             <MenubarTrigger>{t('menu.help')}</MenubarTrigger>
             <MenubarContent>
               <MenubarItem
-                onClick={() => void openUrl('https://discord.gg/mHvHkxGnUY').catch(() => undefined)}
-              >
-                {t('menu.discord')}
-              </MenubarItem>
-              <MenubarItem
                 onClick={() =>
-                  void openUrl('https://github.com/koharu-rs/koharu').catch(() => undefined)
+                  void openUrl('https://github.com/gray-rice/koharu-ex').catch(() => undefined)
                 }
               >
                 {t('menu.github')}
@@ -344,7 +339,7 @@ export function TitleBar() {
               )}
             </span>
           ) : (
-            <span>Koharu</span>
+            <span>Koharu-EX</span>
           )}
         </div>
 

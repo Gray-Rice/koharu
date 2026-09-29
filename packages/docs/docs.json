@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "almond",
-  "name": "Koharu",
+  "name": "Koharu-EX",
   "description": "Editable manga translation, from the first page to the final export.",
   "colors": {
     "primary": "#D85B6A",
