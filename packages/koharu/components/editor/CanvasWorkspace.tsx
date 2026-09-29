@@ -63,6 +63,13 @@ function getCursor(tool: CanvasTool, brush: { eraserMode: 'brush' | 'rectangle';
 
 type Gesture =
   | { kind: 'pan'; pointer: number; start: Point; translation: [number, number] }
+  | {
+      kind: 'select'
+      pointer: number
+      start: Point
+      current: Point
+      additive: boolean
+    }
   | { kind: 'move'; pointer: number; start: Point; originals: TransformFrame[] }
   | { kind: 'text'; pointer: number; start: Point; frame: Frame }
   | { kind: 'erase_rect'; pointer: number; start: Point; current: Point; layer: string }
@@ -110,6 +117,7 @@ export function CanvasWorkspace() {
   const commitPending = useRef(false)
   const commandQueue = useRef<Promise<void>>(Promise.resolve())
   const [previews, setPreviews] = useState<Record<string, Frame>>({})
+  const [selectionRect, setSelectionRect] = useState<Frame | null>(null)
   const [draft, setDraft] = useState<Frame | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const [cursor, setCursor] = useState<Point | null>(null)
@@ -579,7 +587,21 @@ export function CanvasWorkspace() {
 
     const points = samples.map((value) => clientPagePoint(value.clientX, value.clientY))
     const point = points.at(-1)!
-    if (current.kind === 'move') {
+    if (current.kind === 'select') {
+      const x = Math.min(current.start.x, point.x)
+      const y = Math.min(current.start.y, point.y)
+      const width = Math.abs(point.x - current.start.x)
+      const height = Math.abs(point.y - current.start.y)
+
+      current.current = point
+      setSelectionRect({
+        x,
+        y,
+        width,
+        height,
+        angle_degrees: 0,
+      })
+    } else if (current.kind === 'move') {
       updateTransform(
         translateFrames(current.originals, {
           x: point.x - current.start.x,
@@ -627,6 +649,27 @@ export function CanvasWorkspace() {
     if (!current || !page) return
     if (current.kind === 'move') {
       finishTransform()
+    } else if (current.kind === 'select') {
+      const x = Math.min(current.start.x, current.current.x)
+      const y = Math.min(current.start.y, current.current.y)
+      const width = Math.abs(current.current.x - current.start.x)
+      const height = Math.abs(current.current.y - current.start.y)
+
+      const rect = { x, y, width, height }
+      const selectedInRect = page.layers
+        .filter(selectableLayer)
+        .filter((layer) => {
+          const frame = controlFrame(layer, layerFrames)
+          return frame ? frameInsideRect(frame, rect) : false
+        })
+        .map((layer) => layer.id)
+
+      selectLayers(
+        current.additive
+          ? [...new Set([...selected, ...selectedInRect])]
+          : selectedInRect,
+      )
+      setSelectionRect(null)
     } else if (current.kind === 'text') {
       const pointText =
         current.frame.width < 4 / camera.zoom && current.frame.height < 4 / camera.zoom
@@ -746,7 +789,20 @@ export function CanvasWorkspace() {
               const target = hitTestLayers(page.layers, point, layerFrames)
               const additive = event.shiftKey || event.ctrlKey || event.metaKey
               if (!target) {
-                if (!additive) selectLayers([])
+                gesture.current = {
+                  kind: 'select',
+                  pointer: event.pointerId,
+                  start: point,
+                  current: point,
+                  additive,
+                }
+                setSelectionRect({
+                  x: point.x,
+                  y: point.y,
+                  width: 0,
+                  height: 0,
+                  angle_degrees: 0,
+                })
                 return
               }
               const next = additive
@@ -960,6 +1016,22 @@ export function CanvasWorkspace() {
               onTransformStart={beginTransform}
               onTransformFrame={updateTransform}
               onTransformEnd={finishTransform}
+            />
+          )}
+          {selectionRect && (
+            <div
+              data-testid='selection-rectangle'
+              className='pointer-events-none absolute z-10 border border-[var(--canvas-selection)] bg-[var(--canvas-selection)]/10'
+              style={{
+                left:
+                  (selectionRect.x * camera.zoom + camera.translation[0]) /
+                  window.devicePixelRatio,
+                top:
+                  (selectionRect.y * camera.zoom + camera.translation[1]) /
+                  window.devicePixelRatio,
+                width: selectionRect.width * camera.zoom / window.devicePixelRatio,
+                height: selectionRect.height * camera.zoom / window.devicePixelRatio,
+              }}
             />
           )}
           {eraseRect && (
