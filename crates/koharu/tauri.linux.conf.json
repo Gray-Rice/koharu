@@ -2,6 +2,6 @@
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/fe0e5155c12459f3250dd9ae5867dd627d7c8286/crates/tauri-schema-generator/schemas/config.schema.json",
   "identifier": "Koharu",
   "bundle": {
-    "targets": ["deb", "rpm", "appimage"]
+    "targets": ["deb", "rpm"]
   }
 }

@@ -134,11 +134,12 @@ OpenAI-compatible endpoints are also supported.
 
 ## Installation
 
+Builds are only available for Linux-x86 64-bit systems.
+
 Download release builds from the [releases page](https://github.com/gray-rice/koharu-ex/releases/latest). [Installation requirements and first launch (official docs)](https://koharu.rs/en/installation) vary by operating system.
 
-Builds are only available for Linux.
-
-Windows and MacOS users are requested to refer [Development](#development) section and build their packages.
+Linux ARM, Windows and MacOS users are requested to refer [Development](#development) section and build their packages.<br>
+Linux ARM and windows builds are planned, I have no plans to support MacOS.
 
 
 
@@ -197,4 +198,4 @@ Thanks to the original creator [Mayo Takanashi](https://github.com/mayocream) an
 
 ## License
 
-This fork of Koharu is licensed under the [MIT License](LICENSE-MIT)
+The original project was dual-licensed under MIT and Apache 2.0. This fork exercises the option to distribute the software and all subsequent modifications strictly under the MIT License."

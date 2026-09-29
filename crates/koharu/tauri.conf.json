@@ -39,8 +39,8 @@
       "icons/icon.ico"
     ],
     "createUpdaterArtifacts": true,
-    "license": "MIT OR Apache-2.0",
-    "resources": ["../../LICENSE-MIT", "../../LICENSE-APACHE"]
+    "license": "MIT",
+    "resources": ["../../LICENSE-MIT"]
   },
   "plugins": {
     "updater": {
