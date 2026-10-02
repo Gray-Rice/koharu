@@ -31,6 +31,7 @@ Koharu introduces a local-first workflow for manga translation, utilizing the po
 
 ### Extras (Refer Project Wiki for more details)
 - **Translation Import/Export:** JSON-based translation exchange with page-level granularity for collaborative workflows.
+- **Project Archiving:** Organise projects easily with archives.
 - **Rectangle Selection for Eraser & Remove Tools:** Precise region selection for targeted cleanup and inpainting.
 - **Multi Layer select:** Drag to select multiple layers.
 - **Fine grained export options:** Options for individual/group exports of selected pages without having to export entire project.
