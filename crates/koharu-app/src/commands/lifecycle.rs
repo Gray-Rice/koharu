@@ -334,6 +334,124 @@ pub(crate) async fn delete_project(
     Ok(())
 }
 
+#[tracing::instrument(
+    target = "koharu_metrics",
+    name = "project_archived",
+    skip_all,
+    fields(origin = "user")
+)]
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn archive_project(
+    name: String,
+    handle: AppHandle<CefRuntime>,
+) -> std::result::Result<(), Error> {
+    let active = handle
+        .state::<CurrentProject>()
+        .project
+        .lock()
+        .await
+        .as_ref()
+        .is_some_and(|project| project.name == name);
+    if active {
+        close_current_project(&handle).await?;
+    }
+    let library = handle.state::<ProjectLibrary>().inner().clone();
+    tokio::task::spawn_blocking(move || library.archive(&name))
+        .await
+        .context("project archive task failed")??;
+    Ok(())
+}
+
+#[tracing::instrument(
+    target = "koharu_metrics",
+    name = "project_restored",
+    skip_all,
+    fields(origin = "user")
+)]
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn restore_project(
+    name: String,
+    handle: AppHandle<CefRuntime>,
+) -> std::result::Result<(), Error> {
+    let library = handle.state::<ProjectLibrary>().inner().clone();
+    tokio::task::spawn_blocking(move || library.restore(&name))
+        .await
+        .context("project restore task failed")??;
+    Ok(())
+}
+
+#[tracing::instrument(
+    target = "koharu_metrics",
+    name = "projects_archived",
+    skip_all,
+    fields(origin = "user")
+)]
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn archive_projects(
+    names: Vec<String>,
+    handle: AppHandle<CefRuntime>,
+) -> std::result::Result<(), Error> {
+    let active_names: std::collections::HashSet<String> = handle
+        .state::<CurrentProject>()
+        .project
+        .lock()
+        .await
+        .as_ref()
+        .map(|project| std::iter::once(project.name.clone()).collect())
+        .unwrap_or_default();
+
+    let has_active = names.iter().any(|name| active_names.contains(name));
+    if has_active {
+        close_current_project(&handle).await?;
+    }
+
+    let library = handle.state::<ProjectLibrary>().inner().clone();
+    tokio::task::spawn_blocking(move || {
+        for name in names {
+            library.archive(&name)?;
+        }
+        Ok::<_, Error>(())
+    })
+    .await
+    .context("project bulk archive task failed")??;
+    Ok(())
+}
+
+#[tracing::instrument(
+    target = "koharu_metrics",
+    name = "projects_restored",
+    skip_all,
+    fields(origin = "user")
+)]
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn restore_projects(
+    names: Vec<String>,
+    handle: AppHandle<CefRuntime>,
+) -> std::result::Result<(), Error> {
+    let library = handle.state::<ProjectLibrary>().inner().clone();
+    tokio::task::spawn_blocking(move || {
+        for name in names {
+            library.restore(&name)?;
+        }
+        Ok::<_, Error>(())
+    })
+    .await
+    .context("project bulk restore task failed")??;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn list_archived_projects(
+    library: State<'_, ProjectLibrary>,
+) -> std::result::Result<Vec<ProjectSummary>, Error> {
+    Ok(library.list_archived()?)
+}
+
 async fn close_current_project(handle: &AppHandle<CefRuntime>) -> Result<()> {
     handle.state::<AgentState>().reset().await;
     let processing = handle.state::<Processing>();

@@ -38,6 +38,11 @@ pub struct ProjectInfo {
 #[derive(Clone, Debug, Serialize, Type)]
 pub struct ProjectSummary {
     pub name: String,
+    pub archived: bool,
+    #[specta(type = f64)]
+    pub size_bytes: u64,
+    #[specta(type = f64)]
+    pub last_modified: u64,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Type)]
@@ -191,6 +196,14 @@ impl ProjectLibrary {
     }
 
     pub(crate) fn list(&self) -> Result<Vec<ProjectSummary>> {
+        self.list_internal(false)
+    }
+
+    pub(crate) fn list_archived(&self) -> Result<Vec<ProjectSummary>> {
+        self.list_internal(true)
+    }
+
+    fn list_internal(&self, include_archived: bool) -> Result<Vec<ProjectSummary>> {
         let mut projects = std::fs::read_dir(&self.root)
             .with_context(|| format!("failed to read {}", self.root.display()))?
             .filter_map(|entry| entry.ok())
@@ -205,15 +218,24 @@ impl ProjectLibrary {
                 if !is_project_directory {
                     return None;
                 }
+                let archive_marker = path.join(".archive");
+                let archived = archive_marker.is_file();
+                if archived != include_archived {
+                    return None;
+                }
                 let last_used = ["state-a.khr", "state-b.khr"]
                     .into_iter()
                     .filter_map(|file| std::fs::metadata(path.join(file)).ok()?.modified().ok())
                     .max()
                     .unwrap_or(std::time::UNIX_EPOCH);
+                let size_bytes = Self::compute_project_size(&path).unwrap_or(0);
                 Some((
                     last_used,
                     ProjectSummary {
                         name: path.file_stem()?.to_str()?.to_owned(),
+                        archived,
+                        size_bytes,
+                        last_modified: last_used.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(),
                     },
                 ))
             })
@@ -224,6 +246,17 @@ impl ProjectLibrary {
                 .then_with(|| left.name.to_lowercase().cmp(&right.name.to_lowercase()))
         });
         Ok(projects.into_iter().map(|(_, project)| project).collect())
+    }
+
+    fn compute_project_size(path: &std::path::Path) -> Result<u64> {
+        let mut total = 0u64;
+        for entry in walkdir::WalkDir::new(path) {
+            let entry = entry?;
+            if entry.file_type().is_file() {
+                total += entry.metadata()?.len();
+            }
+        }
+        Ok(total)
     }
 
     pub(crate) async fn create(&self, name: &str) -> Result<Project> {
@@ -243,6 +276,29 @@ impl ProjectLibrary {
         }
         std::fs::remove_dir_all(&path)
             .with_context(|| format!("failed to delete {}", path.display()))
+    }
+
+    pub(crate) fn archive(&self, name: &str) -> Result<()> {
+        let (_, path) = self.resolve(name)?;
+        if !path.is_dir() {
+            bail!("project {name:?} does not exist");
+        }
+        let archive_marker = path.join(".archive");
+        std::fs::write(&archive_marker, b"")
+            .with_context(|| format!("failed to archive project {}", path.display()))
+    }
+
+    pub(crate) fn restore(&self, name: &str) -> Result<()> {
+        let (_, path) = self.resolve(name)?;
+        if !path.is_dir() {
+            bail!("project {name:?} does not exist");
+        }
+        let archive_marker = path.join(".archive");
+        if archive_marker.is_file() {
+            std::fs::remove_file(&archive_marker)
+                .with_context(|| format!("failed to restore project {}", path.display()))?;
+        }
+        Ok(())
     }
 
     fn resolve(&self, name: &str) -> Result<(String, PathBuf)> {

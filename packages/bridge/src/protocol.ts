@@ -34,10 +34,15 @@ export const commands = {
 	layers: Layer[],
 	regions: AnalysisRegion[],
 } | null>("get_page").then((v) => (v==null?v:({...v,layers:v.layers.map(i=>i),regions:v.regions.map(i=>({...i,geometry:({...i.geometry,points:i.geometry.points.map(i=>i)})}))}) as typeof v)),
-	listProjects: () => __TAURI_INVOKE<ProjectSummary[]>("list_projects"),
+	listProjects: () => __TAURI_INVOKE<ProjectSummary[]>("list_projects").then((v) => (v.map(i=>i) as typeof v)),
 	createProject: (name: string) => __TAURI_INVOKE<null>("create_project", { name }),
 	openProject: (name: string) => __TAURI_INVOKE<null>("open_project", { name }),
 	deleteProject: (name: string) => __TAURI_INVOKE<null>("delete_project", { name }),
+	archiveProject: (name: string) => __TAURI_INVOKE<null>("archive_project", { name }),
+	restoreProject: (name: string) => __TAURI_INVOKE<null>("restore_project", { name }),
+	archiveProjects: (names: string[]) => __TAURI_INVOKE<null>("archive_projects", { names }),
+	restoreProjects: (names: string[]) => __TAURI_INVOKE<null>("restore_projects", { names }),
+	listArchivedProjects: () => __TAURI_INVOKE<ProjectSummary[]>("list_archived_projects").then((v) => (v.map(i=>i) as typeof v)),
 	closeProject: () => __TAURI_INVOKE<null>("close_project"),
 	import: (source: PageImportSource) => __TAURI_INVOKE<null>("import", { source }),
 	selectPage: (page: EntityId) => __TAURI_INVOKE<PageSelection>("select_page", { page }).then((v) => (({...v,page:({...v.page,layers:v.page.layers.map(i=>i),regions:v.page.regions.map(i=>({...i,geometry:({...i.geometry,points:i.geometry.points.map(i=>i)})}))})}) as typeof v)),
@@ -435,6 +440,9 @@ export type ProjectInfo = {
 
 export type ProjectSummary = {
 	name: string,
+	archived: boolean,
+	size_bytes: number,
+	last_modified: number,
 };
 
 export type Provider = "local" | "openai" | "gemini" | "claude" | "grok" | "minimax" | "deepseek" | "openai-compatible" | "openrouter" | "lm-studio" | "deepl" | "google-cloud-translation" | "caiyun";

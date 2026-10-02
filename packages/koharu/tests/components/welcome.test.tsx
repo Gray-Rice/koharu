@@ -65,7 +65,7 @@ describe('StartView', () => {
           }
         : null,
     )
-    vi.spyOn(commands, 'listProjects').mockResolvedValue([{ name: 'Blue Archive' }])
+    vi.spyOn(commands, 'listProjects').mockResolvedValue([{ name: 'Blue Archive', archived: false, size_bytes: 1024, last_modified: Date.now() / 1000 }])
     const open = vi.spyOn(commands, 'openProject').mockImplementation(async () => {
       opened = true
       return null
@@ -83,7 +83,7 @@ describe('StartView', () => {
 
   it('confirms before deleting a managed project', async () => {
     vi.spyOn(commands, 'listProjects')
-      .mockResolvedValueOnce([{ name: 'Blue Archive' }])
+      .mockResolvedValueOnce([{ name: 'Blue Archive', archived: false, size_bytes: 1024, last_modified: Date.now() / 1000 }])
       .mockResolvedValueOnce([])
     const remove = vi.spyOn(commands, 'deleteProject').mockResolvedValue(null)
     render(<StartView />)
